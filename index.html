@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SELCAL Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0d12;
+    --panel: #12151c;
+    --line: #232834;
+    --text: #e7e9ee;
+    --muted: #8a91a0;
+    --accent: #d4b26a;
+    --accent-2: #6aa8d4;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    min-height: 100vh;
+    background: radial-gradient(1200px 600px at 50% -10%, #1a1f2b 0%, var(--bg) 60%);
+    color: var(--text);
+    font-family: Inter, system-ui, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 16px;
+  }
+  main { width: 100%; max-width: 640px; text-align: center; }
+  header h1 {
+    font-weight: 600;
+    letter-spacing: .32em;
+    font-size: 14px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 40px;
+  }
+  .card {
+    background: linear-gradient(180deg, var(--panel), #0f1218);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 28px 20px 24px;
+    margin-bottom: 18px;
+  }
+  .label {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 12px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 18px;
+  }
+  .label b { color: var(--accent); font-weight: 600; }
+  .card.ext .label b { color: var(--accent-2); }
+  .code {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-weight: 700;
+    font-size: clamp(48px, 15vw, 104px);
+    letter-spacing: .08em;
+    line-height: 1;
+    color: var(--text);
+    cursor: pointer;
+    user-select: all;
+    transition: opacity .2s ease, transform .2s ease;
+  }
+  .code.small { font-size: clamp(36px, 11vw, 72px); }
+  .code.flash { opacity: 0; transform: translateY(4px); }
+  .code .dash { color: var(--line); margin: 0 .05em; }
+  .hint { margin-top: 14px; font-size: 12px; color: var(--muted); min-height: 1em; }
+  button {
+    margin-top: 22px;
+    font: 600 14px Inter, sans-serif;
+    letter-spacing: .24em;
+    text-transform: uppercase;
+    color: #0b0d12;
+    background: var(--accent);
+    border: 0;
+    border-radius: 999px;
+    padding: 16px 44px;
+    cursor: pointer;
+    transition: filter .15s ease, transform .1s ease;
+  }
+  button:hover { filter: brightness(1.08); }
+  button:active { transform: scale(.98); }
+  footer {
+    margin-top: 36px;
+    font-size: 12px;
+    line-height: 1.7;
+    color: var(--muted);
+    text-align: left;
+  }
+  footer summary { cursor: pointer; text-align: center; letter-spacing: .1em; text-transform: uppercase; }
+  footer ul { padding-left: 18px; }
+  footer code { font-family: "JetBrains Mono", monospace; color: var(--text); }
+</style>
+</head>
+<body>
+<main>
+  <header><h1>SELCAL Generator</h1></header>
+
+  <section class="card">
+    <div class="label"><span>Standard</span><b>16-tone · ARINC 714</b></div>
+    <div class="code" id="std" title="Click to copy">––-––</div>
+    <div class="hint" id="std-hint"></div>
+  </section>
+
+  <section class="card ext">
+    <div class="label"><span>Extended</span><b>32-tone · SELCAL32</b></div>
+    <div class="code small" id="ext" title="Click to copy">––-––</div>
+    <div class="hint" id="ext-hint"></div>
+  </section>
+
+  <button id="gen">Generate</button>
+
+  <footer>
+    <details>
+      <summary>Rules applied</summary>
+      <ul>
+        <li>Four tones in two pairs, written <code>AB-CD</code>.</li>
+        <li>Standard tones: <code>A B C D E F G H J K L M P Q R S</code> (no I, N or O).</li>
+        <li>No tone may appear more than once in a code.</li>
+        <li>Within each pair, tones are in ascending order (<code>AB</code> valid, <code>BA</code> not).</li>
+        <li>Extended (SELCAL32) adds <code>T U V W X Y Z</code> and <code>1–9</code>. Extended codes here always contain at least one new tone, so they never overlap the standard set.</li>
+      </ul>
+      <p>For illustration only. Real SELCAL codes are assigned to aircraft by the registrar (Aviation Spectrum Resources Inc.), not self-generated.</p>
+    </details>
+  </footer>
+</main>
+
+<script>
+  const STD = "ABCDEFGHJKLMPQRS".split("");
+  const EXT_NEW = "TUVWXYZ123456789".split("");
+  const EXT = STD.concat(EXT_NEW); // ordered by tone index
+
+  function randInt(n) {
+    const a = new Uint32Array(1);
+    crypto.getRandomValues(a);
+    return a[0] % n;
+  }
+
+  function pickDistinct(set, k) {
+    const pool = set.slice();
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = randInt(i + 1);
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    return pool.slice(0, k);
+  }
+
+  function makeCode(set, mustInclude) {
+    let tones;
+    do {
+      tones = pickDistinct(set, 4);
+    } while (mustInclude && !tones.some(t => mustInclude.includes(t)));
+    const order = t => set.indexOf(t);
+    const p1 = tones.slice(0, 2).sort((a, b) => order(a) - order(b));
+    const p2 = tones.slice(2, 4).sort((a, b) => order(a) - order(b));
+    return p1.join("") + "-" + p2.join("");
+  }
+
+  function render(el, code) {
+    el.classList.add("flash");
+    setTimeout(() => {
+      el.innerHTML = code.replace("-", '<span class="dash">-</span>');
+      el.dataset.code = code;
+      el.classList.remove("flash");
+    }, 180);
+  }
+
+  function generate() {
+    render(document.getElementById("std"), makeCode(STD));
+    render(document.getElementById("ext"), makeCode(EXT, EXT_NEW));
+    document.getElementById("std-hint").textContent = "";
+    document.getElementById("ext-hint").textContent = "";
+  }
+
+  ["std", "ext"].forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener("click", () => {
+      if (!el.dataset.code) return;
+      navigator.clipboard?.writeText(el.dataset.code).then(() => {
+        const hint = document.getElementById(id + "-hint");
+        hint.textContent = "Copied";
+        setTimeout(() => hint.textContent = "", 1200);
+      }).catch(() => {});
+    });
+  });
+
+  document.getElementById("gen").addEventListener("click", generate);
+  document.addEventListener("keydown", e => {
+    if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); generate(); }
+  });
+  generate();
+</script>
+</body>
+</html>
