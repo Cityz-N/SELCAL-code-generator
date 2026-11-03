@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Saved SELCALs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <header>
+    <h1>Saved SELCALs</h1>
+    <nav><a href="index.html">Generator</a></nav>
+  </header>
+
+  <label class="field" id="search">
+    <input id="filter" placeholder="Find a callsign, airline or code" aria-label="Find a saved code" autocomplete="off" spellcheck="false">
+  </label>
+
+  <ul class="list" id="list"></ul>
+  <div class="empty" id="empty" hidden></div>
+
+  <footer>Codes are kept for 24 hours, in this browser only, with up to 10 entries per callsign. They won't appear on another device.</footer>
+</main>
+
+<script src="shared.js"></script>
+<script>
+  const list = document.getElementById("list");
+  const empty = document.getElementById("empty");
+  const filter = document.getElementById("filter");
+
+  function buildRow(entry, saved) {
+    const airline = airlineFor(entry.callsign);
+    const repeated = saved.filter(e => e.callsign === entry.callsign).length > 1;
+    const row = document.createElement("li");
+    row.className = "row";
+
+    const tile = document.createElement("div");
+    tile.className = "tile";
+    fillTile(tile, entry.callsign);
+
+    const who = document.createElement("div");
+    who.className = "who";
+    const callsign = document.createElement("strong");
+    callsign.textContent = entry.callsign;
+    const meta = document.createElement("span");
+    meta.textContent = [
+      airline && airline.name,
+      repeated && "Generated " + formatGenerated(entry.generated),
+      timeLeft(entry.expires)
+    ].filter(Boolean).join(" · ");
+    who.append(callsign, meta);
+
+    const codes = document.createElement("div");
+    codes.className = "codes";
+    ["std", "ext"].filter(type => entry[type]).forEach(type => {
+      const line = document.createElement("div");
+      const tag = document.createElement("span");
+      tag.className = "tag " + type;
+      tag.textContent = type.toUpperCase();
+      const code = document.createElement("div");
+      code.className = "code";
+      code.title = "Click to copy";
+      code.innerHTML = codeHtml(entry[type]);
+      code.addEventListener("click", () => {
+        navigator.clipboard?.writeText(entry[type]).then(() => {
+          meta.textContent = "Copied";
+          setTimeout(draw, 1200);
+        }).catch(() => {});
+      });
+      line.append(tag, code);
+      codes.append(line);
+    });
+
+    const remove = document.createElement("button");
+    remove.className = "remove";
+    remove.textContent = "×";
+    remove.title = "Remove";
+    remove.setAttribute("aria-label", `Remove entry from ${entry.callsign}`);
+    remove.addEventListener("click", () => {
+      removeEntry(entry.callsign, entry.generated);
+      draw();
+    });
+
+    row.append(tile, who, codes, remove);
+    return row;
+  }
+
+  function draw() {
+    const saved = loadSaved();
+    const term = filter.value.trim().toUpperCase();
+    const shown = saved.filter(e => {
+      const airline = airlineFor(e.callsign);
+      return `${e.callsign} ${airline ? airline.name : ""} ${e.std || ""} ${e.ext || ""}`.toUpperCase().includes(term);
+    });
+
+    document.getElementById("search").hidden = !saved.length;
+    list.replaceChildren(...shown.map(e => buildRow(e, saved)));
+    empty.hidden = shown.length > 0;
+    if (!saved.length) {
+      empty.innerHTML = 'Nothing saved in the last 24 hours.<br><a href="index.html">Generate a code</a>';
+    } else if (!shown.length) {
+      empty.textContent = "No saved code matches that search.";
+    }
+  }
+
+  filter.addEventListener("input", draw);
+  window.addEventListener("storage", draw);
+  window.addEventListener("pageshow", draw);
+  setInterval(draw, 60000);
+</script>
+</body>
+</html>

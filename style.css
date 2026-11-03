@@ -1,0 +1,233 @@
+:root {
+  --bg: #0b0d12;
+  --panel: #12151c;
+  --line: #232834;
+  --text: #e7e9ee;
+  --muted: #8a91a0;
+  --accent: #d4b26a;
+  --accent-2: #6aa8d4;
+  --error: #e58a7b;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body {
+  min-height: 100vh;
+  background: #0b0d12 radial-gradient(1200px 600px at 50% -10%, #1a1f2b 0%, var(--bg) 60%) no-repeat;
+  color: var(--text);
+  font-family: Inter, system-ui, sans-serif;
+  display: flex;
+  justify-content: center;
+  padding: 32px 16px;
+}
+main { width: 100%; max-width: 640px; text-align: center; }
+a { color: inherit; }
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+header h1 {
+  font-weight: 600;
+  letter-spacing: .32em;
+  font-size: 14px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0;
+}
+nav a {
+  font-size: 12px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-decoration: none;
+  white-space: nowrap;
+}
+nav a:hover { color: var(--text); }
+nav a b { color: var(--accent); font-weight: 600; }
+
+.card {
+  background: linear-gradient(180deg, var(--panel), #0f1218);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 28px 20px 16px;
+  margin-bottom: 18px;
+}
+.label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 12px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 18px;
+}
+.label b { color: var(--accent); font-weight: 600; }
+.card.ext .label b { color: var(--accent-2); }
+.code {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-weight: 700;
+  font-size: clamp(48px, 15vw, 104px);
+  letter-spacing: .08em;
+  line-height: 1;
+  color: var(--text);
+  cursor: pointer;
+  user-select: all;
+  transition: opacity .2s ease, transform .2s ease;
+}
+.code.small { font-size: clamp(36px, 11vw, 72px); }
+.code.flash { opacity: 0; transform: translateY(4px); }
+.code .dash { color: var(--line); margin: 0 .05em; }
+
+.card-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  min-height: 34px;
+}
+.hint { font-size: 12px; color: var(--muted); text-align: left; }
+.hint.error { color: var(--error); }
+
+.field {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin-bottom: 18px;
+  transition: border-color .15s ease;
+}
+.field:focus-within { border-color: var(--muted); }
+.field input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: 0;
+  outline: 0;
+  color: var(--text);
+  font: 500 16px "JetBrains Mono", ui-monospace, monospace;
+  letter-spacing: .08em;
+}
+.field input::placeholder { color: var(--muted); letter-spacing: .02em; font-family: Inter, system-ui, sans-serif; }
+.field .airline { font-size: 12px; color: var(--muted); text-align: right; }
+
+.tile {
+  flex: none;
+  width: 64px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--line);
+  color: var(--muted);
+  font: 500 12px "JetBrains Mono", ui-monospace, monospace;
+  letter-spacing: .06em;
+  overflow: hidden;
+}
+.tile.logo { background: #f4f5f7; }
+.tile img { display: block; max-width: 56px; max-height: 28px; }
+
+button {
+  font-family: Inter, sans-serif;
+  cursor: pointer;
+  border: 0;
+  transition: filter .15s ease, transform .1s ease, color .15s ease, border-color .15s ease;
+}
+button:active { transform: scale(.98); }
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+.hint.message { margin-top: 14px; min-height: 18px; text-align: center; }
+.primary {
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: .24em;
+  text-transform: uppercase;
+  color: #0b0d12;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  padding: 16px 32px;
+}
+.primary:hover { filter: brightness(1.08); }
+.primary.outline { color: var(--accent); background: none; }
+.ghost {
+  flex: none;
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 8px 18px;
+}
+.ghost:hover { color: var(--text); border-color: var(--muted); }
+
+footer {
+  margin-top: 36px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--muted);
+  text-align: left;
+}
+footer summary { cursor: pointer; text-align: center; letter-spacing: .1em; text-transform: uppercase; }
+footer ul { padding-left: 18px; }
+footer code { font-family: "JetBrains Mono", monospace; color: var(--text); }
+
+.list { list-style: none; margin: 0; padding: 0; text-align: left; }
+.row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+.row .who strong {
+  display: block;
+  font: 500 16px "JetBrains Mono", ui-monospace, monospace;
+  letter-spacing: .08em;
+}
+.row .who span { display: block; margin-top: 3px; font-size: 12px; color: var(--muted); }
+.codes { display: grid; gap: 6px; }
+.codes > div { display: flex; justify-content: flex-end; align-items: center; gap: 10px; }
+.tag { font-size: 10px; letter-spacing: .14em; color: var(--accent); }
+.tag.ext { color: var(--accent-2); }
+.row .code { font-size: 28px; white-space: nowrap; }
+.row .remove {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+}
+.row .remove:hover { color: var(--error); }
+.empty { padding: 48px 0; color: var(--muted); font-size: 14px; text-align: center; line-height: 1.7; }
+.empty a { color: var(--accent); }
+
+@media (max-width: 480px) {
+  .row { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .codes { grid-column: 1 / 3; grid-row: 2; }
+  .codes > div { justify-content: flex-start; }
+  .row .remove { grid-column: 3; grid-row: 1; }
+  .field .airline { display: none; }
+}
