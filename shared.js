@@ -212,9 +212,11 @@ function loadVatsim(force) {
 }
 
 // Who else uses this code on VATSIM. null = not checked (VATSIM data not loaded).
+// `exclude`: a callsign or a list of callsigns that are you (your own prefile is not "used by").
 function usedBy(code, exclude) {
   if (!code || !vatsim) return null;
-  return (vatsim.used.get(codeKey(code)) || []).filter(u => u.callsign !== exclude);
+  const skip = [].concat(exclude || []).filter(Boolean).map(normalizeCallsign);
+  return (vatsim.used.get(codeKey(code)) || []).filter(u => !skip.includes(u.callsign));
 }
 
 function usedText(list) {

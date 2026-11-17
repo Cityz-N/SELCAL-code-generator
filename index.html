@@ -87,7 +87,7 @@
   </footer>
 </main>
 
-<script src="shared.js?v=2"></script>
+<script src="shared.js?v=3"></script>
 <script>
   function randInt(n) {
     const a = new Uint32Array(1);
@@ -145,10 +145,11 @@
   }
 
   function showStatuses() {
-    setStatus($("std-status"), $("std").dataset.code, input.value);
-    setStatus($("ext-status"), $("ext").dataset.code, input.value);
+    const me = [input.value, sbPlan && sbPlan.callsign];
+    setStatus($("std-status"), $("std").dataset.code, me);
+    setStatus($("ext-status"), $("ext").dataset.code, me);
     if (sbPlan && sbPlan.selcal) setStatus($("sb-status"), sbPlan.selcal, sbPlan.callsign);
-    if (checked) setStatus($("check-status"), checked);
+    if (checked) setStatus($("check-status"), checked, [input.value, sbPlan && sbPlan.callsign]);
   }
 
   function setHint(id, text, isError) {
