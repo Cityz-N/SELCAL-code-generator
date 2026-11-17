@@ -144,3 +144,112 @@ function timeLeft(expires) {
 function codeHtml(code) {
   return code.replace("-", '<span class="dash">-</span>');
 }
+
+// ---------- SELCAL tones (shared by the generator and the checks) ----------
+const STD = "ABCDEFGHJKLMPQRS".split("");
+const EXT_NEW = "TUVWXYZ123456789".split("");
+const EXT = STD.concat(EXT_NEW);
+
+// "ERMP", "er-mp", "SEL/ER-MP" -> "ER-MP" (null if it isn't four different valid tones)
+function parseCode(text) {
+  const raw = String(text || "").toUpperCase().replace("SEL/", "").replace(/[^A-Z0-9]/g, "");
+  if (raw.length !== 4 || [...raw].some(c => !EXT.includes(c)) || new Set(raw).size !== 4) return null;
+  return raw.slice(0, 2) + "-" + raw.slice(2);
+}
+
+const isExtended = code => [...String(code || "").replace("-", "")].some(c => EXT_NEW.includes(c));
+
+// Throws a readable message when the code breaks a rule; returns the clean code otherwise.
+function validateCode(text) {
+  const code = parseCode(text);
+  if (!code) throw new Error("A SELCAL is four different tones, e.g. AB-CD (A–S without I, N, O; extended adds T–Z, 1–9).");
+  const tones = isExtended(code) ? EXT : STD;
+  const t = code.replace("-", "");
+  const order = c => tones.indexOf(c);
+  if (order(t[0]) > order(t[1]) || order(t[2]) > order(t[3])) {
+    const fix = [...t.slice(0, 2)].sort((a, b) => order(a) - order(b)).join("") + "-" + [...t.slice(2)].sort((a, b) => order(a) - order(b)).join("");
+    throw new Error(`Tones must be in order within each pair (${fix}, not ${code}).`);
+  }
+  return code;
+}
+
+// The same tones in either pair order count as the same code (AB-CD = CD-AB).
+function codeKey(code) {
+  const a = [...code.slice(0, 2)].sort().join(""), b = [...code.slice(3)].sort().join("");
+  return [a, b].sort().join("-");
+}
+
+// ---------- VATSIM: which codes are already in flight plans (online and prefiled) ----------
+const VATSIM_FEED = "https://data.vatsim.net/v3/vatsim-data.json";
+const VATSIM_MAX_AGE = 60 * 1000;
+let vatsim = null;           // { ts, used: Map(key -> [{ callsign, code, where }]), count }
+let vatsimLoading = null;
+
+function loadVatsim(force) {
+  if (!force && vatsim && Date.now() - vatsim.ts < VATSIM_MAX_AGE) return Promise.resolve(vatsim);
+  if (vatsimLoading) return vatsimLoading;
+  vatsimLoading = fetch(VATSIM_FEED, { cache: "no-store" })
+    .then(r => { if (!r.ok) throw new Error("VATSIM data not reachable"); return r.json(); })
+    .then(data => {
+      const used = new Map();
+      let count = 0;
+      [["online", data.pilots || []], ["prefiled", data.prefiles || []]].forEach(([where, list]) => {
+        list.forEach(p => {
+          count++;
+          const m = /\bSEL\/([A-Z0-9]{2}-?[A-Z0-9]{2})\b/.exec(String((p.flight_plan || {}).remarks || "").toUpperCase());
+          const code = m && parseCode(m[1]);
+          if (!code) return;
+          const k = codeKey(code);
+          if (!used.has(k)) used.set(k, []);
+          used.get(k).push({ callsign: String(p.callsign || "").toUpperCase(), code, where });
+        });
+      });
+      vatsim = { ts: Date.now(), used, count };
+      return vatsim;
+    })
+    .finally(() => { vatsimLoading = null; });
+  return vatsimLoading;
+}
+
+// Who else uses this code on VATSIM. null = not checked (VATSIM data not loaded).
+function usedBy(code, exclude) {
+  if (!code || !vatsim) return null;
+  return (vatsim.used.get(codeKey(code)) || []).filter(u => u.callsign !== exclude);
+}
+
+function usedText(list) {
+  if (list === null) return { text: "Not checked on VATSIM", cls: "" };
+  if (!list.length) return { text: "Free on VATSIM", cls: "free" };
+  const who = list.slice(0, 3).map(u => u.callsign + (u.where === "prefiled" ? " (prefiled)" : "")).join(", ");
+  return { text: `Used by ${who}${list.length > 3 ? ` +${list.length - 3}` : ""}`, cls: "taken" };
+}
+
+// ---------- SimBrief: latest flight plan of a user ----------
+const SIMBRIEF_KEY = "selcal.simbrief.user";
+
+function simbriefUser() { try { return localStorage.getItem(SIMBRIEF_KEY) || ""; } catch (e) { return ""; } }
+function setSimbriefUser(u) { try { localStorage.setItem(SIMBRIEF_KEY, u); } catch (e) {} }
+
+async function fetchSimbrief(user) {
+  user = String(user || "").trim();
+  if (!user) throw new Error("Enter your SimBrief username or pilot ID.");
+  const key = /^\d+$/.test(user) ? "userid" : "username";
+  let res;
+  try { res = await fetch(`https://www.simbrief.com/api/xml.fetcher.php?${key}=${encodeURIComponent(user)}&json=v2`, { cache: "no-store" }); }
+  catch (e) { throw new Error("SimBrief not reachable."); }
+  if (res.status === 400) throw new Error("SimBrief didn't find a flight plan for that user.");
+  if (!res.ok) throw new Error(`SimBrief error ${res.status}.`);
+  const ofp = await res.json();
+  const dig = (...path) => { let o = ofp; for (const k of path) o = o && typeof o === "object" ? o[k] : undefined; return typeof o === "object" ? "" : (o ?? ""); };
+  const callsign = normalizeCallsign(String(dig("atc", "callsign") || (String(dig("general", "icao_airline")) + String(dig("general", "flight_number")))));
+  let code = parseCode(dig("aircraft", "selcal"));
+  if (!code) {
+    const m = /\bSEL\/([A-Z0-9]{2}-?[A-Z0-9]{2})\b/.exec((String(dig("atc", "section18")) + " " + String(dig("atc", "flightplan_text"))).toUpperCase());
+    code = m && parseCode(m[1]);
+  }
+  return {
+    callsign, selcal: code || null,
+    departure: String(dig("origin", "icao_code")), arrival: String(dig("destination", "icao_code")),
+    aircraft: String(dig("aircraft", "icaocode") || dig("aircraft", "icao_code")), reg: String(dig("aircraft", "reg")),
+  };
+}

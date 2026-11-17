@@ -22,7 +22,7 @@
   <ul class="list" id="list"></ul>
   <div class="empty" id="empty" hidden></div>
 
-  <footer>Codes are kept for 24 hours, in this browser only, with up to 10 entries per callsign. They won't appear on another device.</footer>
+  <footer>Codes are kept for 24 hours, in this browser only, with up to 10 entries per callsign. They won't appear on another device. Each code shows whether it's still free on VATSIM (checked every minute).</footer>
 </main>
 
 <script src="shared.js"></script>
@@ -70,6 +70,15 @@
           setTimeout(draw, 1200);
         }).catch(() => {});
       });
+      // is it still free on VATSIM? (someone may have filed it since)
+      const used = usedBy(entry[type], entry.callsign);
+      if (used !== null) {
+        const st = document.createElement("span");
+        st.className = "status small " + (used.length ? "taken" : "free");
+        st.textContent = used.length ? "used by " + used[0].callsign + (used.length > 1 ? ` +${used.length - 1}` : "") : "free";
+        st.title = usedText(used).text;
+        line.append(st);
+      }
       line.append(tag, code);
       codes.append(line);
     });
@@ -110,6 +119,10 @@
   window.addEventListener("storage", draw);
   window.addEventListener("pageshow", draw);
   setInterval(draw, 60000);
+  // VATSIM check of the saved codes (refreshed every minute)
+  const check = force => loadVatsim(force).then(draw).catch(() => {});
+  check();
+  setInterval(() => check(true), VATSIM_MAX_AGE);
 </script>
 </body>
 </html>
